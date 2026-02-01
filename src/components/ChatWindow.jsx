@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Send, ArrowLeft, MoreVertical, Phone, Video } from 'lucide-react';
+import { Send, ArrowLeft, MoreVertical, Phone, Video, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { chatAPI } from '../services/api';
@@ -20,6 +20,17 @@ const ChatWindow = ({ selectedChat, onBack }) => {
       return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } catch {
       return '...';
+    }
+  };
+
+  const handleDeleteMessage = async (messageId) => {
+    if(!globalThis.confirm('Delete this message?')) return;
+
+    try {
+      await chatAPI.deleteMessage(messageId);
+      setMessages((prev) => prev.filter((m) => m._id !== messageId));
+    } catch {
+      alert("Failed to delete.");
     }
   };
 
@@ -162,12 +173,23 @@ const ChatWindow = ({ selectedChat, onBack }) => {
         {messages.map((msg, idx) => {
           const isOwn = getID(msg.sender_id) === getID(user._id);
           return (
-            <div key={idx} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} message-enter`}>
+            <div key={idx} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} message-enter group`}>
                {!isOwn && (
                  <div className="w-8 h-8 rounded-full bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-xs font-bold text-white mr-2 shrink-0 shadow-md">
                    {(msg.sender_id?.username?.[0] || '?').toUpperCase()}
                  </div>
                )}
+               
+              {isOwn && (
+                <button 
+                    onClick={() => handleDeleteMessage(msg._id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-slate-500 hover:text-red-400 self-center"
+                    title="Delete Message"
+                >
+                    <Trash2 size={16} />
+                </button>
+              )}
+
               {/* Message Bubble Container */}
               <div className={`relative max-w-[85%] lg:max-w-[70%] px-4 py-2.5 rounded-2xl shadow-sm ${
                 isOwn ? 'bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-br-sm' 

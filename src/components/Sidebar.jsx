@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { chatAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Plus, Search } from 'lucide-react';
+import { LogOut, Plus, Search, Trash2 } from 'lucide-react';
 import CreateRoomModal from './createRoomModal';
 
 const Sidebar = ({ onSelectChat, selectedChatId, className }) => {
@@ -35,6 +35,19 @@ const Sidebar = ({ onSelectChat, selectedChatId, className }) => {
       return name.includes(safeSearch);
     });
   };
+
+  const handleDeleteRoom = async (e, roomId) => {
+    e.stopPropagation();
+    if(!globalThis.confirm('Delete this room permanently?')) return;
+
+    try {
+      await chatAPI.deleteRoom(roomId);
+      setRooms((prev) => prev.filter((r) => r._id !== roomId));
+      if(selectedChatId === roomId) onSelectChat(null);
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   const handleRoomCreated = (newRoom) => {
     setRooms(prev => [...prev, newRoom]);
@@ -114,7 +127,7 @@ const Sidebar = ({ onSelectChat, selectedChatId, className }) => {
               <div
                 key={id}
                 onClick={() => onSelectChat(item, activeTab === 'rooms' ? 'room' : 'private')}
-                className={`p-3 rounded-xl cursor-pointer flex items-center gap-3 transition-all ${
+                className={`p-3 rounded-xl cursor-pointer flex items-center gap-3 transition-all group ${
                   isSelected ? 'bg-indigo-600/30 border border-indigo-500/50' : 'hover:bg-slate-700/50'
                 }`}
               >
@@ -129,6 +142,16 @@ const Sidebar = ({ onSelectChat, selectedChatId, className }) => {
                     {activeTab === 'rooms' ? `${item.members?.length || 0} members` : 'Click to chat'}
                   </p>
                 </div>
+
+                {activeTab === 'rooms' && (
+                  <button
+                    onClick={(e) => handleDeleteRoom(e, id)}
+                    className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-red-400 transition-all"
+                    title="Delete Room"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
             );
           })}

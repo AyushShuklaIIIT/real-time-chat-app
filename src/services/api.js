@@ -26,6 +26,8 @@ export const chatAPI = {
     getRooms: () => api.get('/chat/rooms'),
     createRoom: (name, type, members) => api.post('/chat/rooms', { name, type, members }),
     getHistory: (id, type) => api.get(`/chat/history/${id}?type=${type}`),
+    deleteRoom: (id) => api.delete(`/chat/rooms/${id}`),
+    deleteMessage: (id) => api.delete(`/chat/messages/${id}`),
 };
 
 export default api;
