@@ -46,9 +46,10 @@ const CreateRoomModal = ({ isOpen, onClose, users, onRoomCreated }) => {
                         <input
                             type="text"
                             required
+                            maxLength={30}
                             value={roomName}
                             onChange={(e) => setRoomName(e.target.value)}
-                            className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4"
                             placeholder="Enter room name"
                         />
                     </div>

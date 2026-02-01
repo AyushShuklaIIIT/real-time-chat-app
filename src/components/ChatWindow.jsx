@@ -183,9 +183,8 @@ const ChatWindow = ({ selectedChat, onBack }) => {
                 {!isOwn && selectedChat.type === 'room' && (
                     <p className="text-xs text-indigo-400 mb-1 font-medium">{msg.sender_id?.username}</p>
                 )}
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">{msg.content}</p>
                 <p className={`text-[10px] mt-1 text-right ${isOwn ? 'text-indigo-200' : 'text-slate-500'}`}>
-                    {/* USE THE NEW SAFE DATE HELPER */}
                     {formatMessageTime(msg)}
                 </p>
               </div>
