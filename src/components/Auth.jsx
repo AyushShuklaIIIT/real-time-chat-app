@@ -1,17 +1,21 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 
 const Auth = () => {
     const [isLogin, setIsLogin] = useState(true);
     const [formData, setFormData] = useState({ username: '', email: '', password: '' });
     const { login, register } = useAuth();
     const navigate = useNavigate();
+    const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        
+        setIsLoading(true);
 
         try {
             if (isLogin) {
@@ -22,6 +26,7 @@ const Auth = () => {
             navigate('/chat');
         } catch (err) {
             setError(err.response?.data?.message || 'An error occurred. Please try again.');
+            setIsLoading(false);
         }
     };
 
@@ -38,6 +43,7 @@ const Auth = () => {
                             placeholder="Username"
                             className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
                             onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                            disabled={isLoading} 
                         />
                     )}
                     <input
@@ -47,6 +53,7 @@ const Auth = () => {
                         placeholder="Email"
                         className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        disabled={isLoading}
                     />
                     <input
                         type="password"
@@ -55,13 +62,31 @@ const Auth = () => {
                         placeholder="Password"
                         className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        disabled={isLoading}
                     />
+                    
                     {error && <div className="text-red-400 text-sm text-center">{error}</div>}
-                    <button type="submit" className="w-full py-3 bg-linear-to-r from-indigo-600 to-purple-600 rounded-xl font-semibold hover:scale-[1.02] transition-transform">
-                        {isLogin ? 'Sign In' : 'Sign Up'}
+                    
+                    <button 
+                        type="submit" 
+                        disabled={isLoading}
+                        className="w-full py-3 bg-linear-to-r from-indigo-600 to-purple-600 rounded-xl font-semibold hover:scale-[1.02] transition-transform disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        {isLoading ? (
+                            <>
+                                <Loader2 className="animate-spin" size={20} />
+                                <span>Processing...</span>
+                            </>
+                        ) : (
+                            isLogin ? 'Sign In' : 'Sign Up'
+                        )}
                     </button>
                 </form>
-                <button onClick={() => setIsLogin(!isLogin)} className="w-full mt-4 text-sm text-indigo-400">
+                <button 
+                    onClick={() => setIsLogin(!isLogin)} 
+                    disabled={isLoading}
+                    className="w-full mt-4 text-sm text-indigo-400 disabled:opacity-50"
+                >
                     {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
                 </button>
             </div>
