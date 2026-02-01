@@ -2,18 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { chatAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { LogOut, Plus, Search } from 'lucide-react';
-import CreateRoomModal from './createRoomModal'; // Import the new modal
+import CreateRoomModal from './createRoomModal';
 
 const Sidebar = ({ onSelectChat, selectedChatId, className }) => {
   const { logout, user } = useAuth();
-  const [activeTab, setActiveTab] = useState('rooms'); // 'rooms' | 'users'
+  const [activeTab, setActiveTab] = useState('rooms');
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Data State
   const [rooms, setRooms] = useState([]);
   const [users, setUsers] = useState([]);
-  
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
@@ -44,17 +41,24 @@ const Sidebar = ({ onSelectChat, selectedChatId, className }) => {
     onSelectChat(newRoom, 'room');
   };
 
+  const getDisplayName = (item) => {
+     return item.username || item.name || "Unknown";
+  };
+
+  const getInitial = (name) => {
+     return (name && name.length > 0) ? name[0].toUpperCase() : "?";
+  };
+
   return (
     <>
       <div className={`w-full lg:w-80 glass-effect border-r border-slate-700/50 flex flex-col h-full ${className}`}>
-        {/* User Header */}
         <div className="p-4 border-b border-slate-700/50 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30">
-              {user?.username?.[0].toUpperCase()}
+              {getInitial(user?.username)}
             </div>
             <div>
-              <p className="font-semibold text-white text-sm">{user?.username}</p>
+              <p className="font-semibold text-white text-sm">{user?.username || "User"}</p>
               <p className="text-xs text-emerald-400 flex items-center gap-1">
                 <span className="w-2 h-2 bg-emerald-400 rounded-full"></span> Online
               </p>
@@ -103,7 +107,7 @@ const Sidebar = ({ onSelectChat, selectedChatId, className }) => {
         <div className="flex-1 overflow-y-auto scrollbar-thin px-2 pb-4 space-y-1">
           {getFilteredItems().map((item) => {
             const id = item._id;
-            const name = item.name || item.username;
+            const name = getDisplayName(item);
             const isSelected = selectedChatId === id;
             
             return (
@@ -117,7 +121,7 @@ const Sidebar = ({ onSelectChat, selectedChatId, className }) => {
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold text-white ${
                   activeTab === 'rooms' ? 'bg-linear-to-br from-purple-500 to-pink-600' : 'bg-linear-to-br from-emerald-500 to-teal-600'
                 }`}>
-                  {name[0].toUpperCase()}
+                  {getInitial(name)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-white truncate">{name}</p>
@@ -131,7 +135,6 @@ const Sidebar = ({ onSelectChat, selectedChatId, className }) => {
         </div>
       </div>
 
-      {/* Render Modal */}
       <CreateRoomModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
