@@ -11,7 +11,7 @@ const ChatLayout = () => {
   const [selectedChat, setSelectedChat] = useState(null);
 
   return (
-    <div className="flex h-screen w-full bg-[#0f172a] overflow-hidden text-white font-sans">
+    <div className="flex h-[100dvh] w-full bg-[#0f172a] overflow-hidden text-white font-sans">
       <Sidebar
         className={`${selectedChat ? 'hidden lg:flex' : 'flex'}`}
         selectedChatId={selectedChat?._id}
