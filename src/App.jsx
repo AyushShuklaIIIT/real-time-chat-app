@@ -5,6 +5,7 @@ import { SocketProvider } from './context/SocketContext';
 import Auth from './components/Auth';
 import Sidebar from './components/Sidebar';
 import ChatWindow from './components/ChatWindow';
+import WakeUpServer from './components/WakeUpServer';
 
 const ChatLayout = () => {
   const [selectedChat, setSelectedChat] = useState(null);
@@ -47,6 +48,7 @@ const App = () => {
   return (
     <AuthProvider>
       <SocketProvider>
+        <WakeUpServer />
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
