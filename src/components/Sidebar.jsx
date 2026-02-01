@@ -29,12 +29,13 @@ const Sidebar = ({ onSelectChat, selectedChatId, className }) => {
     fetchData();
   }, []);
 
-  // Filter items based on search query
   const getFilteredItems = () => {
     const data = activeTab === 'rooms' ? rooms : users;
     return data.filter(item => {
-      const name = item.name || item.username;
-      return name.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!item) return false;
+      const name = (item.username || item.name || "").toLowerCase();
+      const safeSearch = (searchQuery || "").toLowerCase();
+      return name.includes(safeSearch);
     });
   };
 
