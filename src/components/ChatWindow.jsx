@@ -31,19 +31,22 @@ const ChatWindow = ({ selectedChat, onBack }) => {
 
   const renderContentWithLinks = (text) => {
     if (!text) return null;
+
+    const urlRegex = /((?:https?:\/\/)?(?:www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/g;
     
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
     const parts = text.split(urlRegex);
 
     return parts.map((part, index) => {
       if (part.match(urlRegex)) {
+        const href = part.startsWith('http') ? part : `https://${part}`;
+        
         return (
           <a
             key={index}
-            href={part}
+            href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-indigo-300 hover:text-indigo-200 hover:underline break-all"
+            className="text-blue-400 underline font-medium hover:text-blue-300 break-all"
             onClick={(e) => e.stopPropagation()} 
           >
             {part}
@@ -56,57 +59,39 @@ const ChatWindow = ({ selectedChat, onBack }) => {
 
   useEffect(() => {
     if (!selectedChat || !socket) return;
-
     const loadHistory = async () => {
       try {
         const { data } = await chatAPI.getHistory(selectedChat._id, selectedChat.type);
         setMessages(data);
-        if (selectedChat.type === 'room') {
-            socket.emit('join_room', selectedChat._id);
-        }
-      } catch (err) {
-        console.error("Failed to load history", err);
-      }
+        if (selectedChat.type === 'room') socket.emit('join_room', selectedChat._id);
+      } catch (err) { console.error(err); }
     };
-
     setTyping('');
     loadHistory();
   }, [selectedChat, socket]);
 
   useEffect(() => {
     if (!socket || !selectedChat) return;
-
     const handleReceiveMessage = (newMessage) => {
-      console.log("📨 Message Arrived:", newMessage);
-
       const msgSender = getID(newMessage.sender_id);
       const msgReceiver = getID(newMessage.receiver_id);
       const msgRoom = getID(newMessage.room_id);
-      
       const currentChatId = getID(selectedChat._id);
       const myId = getID(user._id);
 
       const isGroupMatch = selectedChat.type === 'room' && msgRoom === currentChatId;
-
-      const isPrivateMatch = selectedChat.type === 'private' && 
-        (msgSender === currentChatId || msgReceiver === currentChatId);
-
+      const isPrivateMatch = selectedChat.type === 'private' && (msgSender === currentChatId || msgReceiver === currentChatId);
       const isSelf = msgSender === myId;
 
       if ((isGroupMatch || isPrivateMatch) && !isSelf) {
         setMessages((prev) => [...prev, newMessage]);
       }
     };
-
     const handleUserTyping = ({ username, isTyping, chatId }) => {
-        if (getID(chatId) === getID(selectedChat._id)) {
-            setTyping(isTyping ? `${username} is typing...` : '');
-        }
+        if (getID(chatId) === getID(selectedChat._id)) setTyping(isTyping ? `${username} is typing...` : '');
     };
-
     socket.on('receive_message', handleReceiveMessage);
     socket.on('user_typing', handleUserTyping);
-
     return () => {
       socket.off('receive_message', handleReceiveMessage);
       socket.off('user_typing', handleUserTyping);
@@ -120,7 +105,6 @@ const ChatWindow = ({ selectedChat, onBack }) => {
   const handleSend = (e) => {
     e.preventDefault();
     if (!input.trim() || !socket) return;
-
     const messageData = {
       content: input,
       sender_id: user, 
@@ -128,14 +112,8 @@ const ChatWindow = ({ selectedChat, onBack }) => {
       type: selectedChat.type,
       timestamp: new Date().toISOString()
     };
-
     setMessages((prev) => [...prev, messageData]);
-    
-    socket.emit('send_message', { 
-        ...messageData, 
-        sender_id: user._id 
-    });
-    
+    socket.emit('send_message', { ...messageData, sender_id: user._id });
     setInput('');
     socket.emit('typing', { chatId: selectedChat._id, isTyping: false });
   };
@@ -183,7 +161,6 @@ const ChatWindow = ({ selectedChat, onBack }) => {
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin bg-slate-900/50">
         {messages.map((msg, idx) => {
           const isOwn = getID(msg.sender_id) === getID(user._id);
-          
           return (
             <div key={idx} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} message-enter`}>
                {!isOwn && (
@@ -191,7 +168,8 @@ const ChatWindow = ({ selectedChat, onBack }) => {
                    {(msg.sender_id?.username?.[0] || '?').toUpperCase()}
                  </div>
                )}
-              <div className={`max-w-[85%] lg:max-w-[70%] px-4 py-2.5 rounded-2xl shadow-sm ${
+              {/* Message Bubble Container */}
+              <div className={`relative max-w-[85%] lg:max-w-[70%] px-4 py-2.5 rounded-2xl shadow-sm ${
                 isOwn ? 'bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-br-sm' 
                       : 'bg-slate-800 border border-slate-700/50 text-slate-200 rounded-bl-sm'
               }`}>
@@ -199,7 +177,7 @@ const ChatWindow = ({ selectedChat, onBack }) => {
                     <p className="text-xs text-indigo-400 mb-1 font-medium">{msg.sender_id?.username}</p>
                 )}
                 
-                <p className="text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap break-all">
                     {renderContentWithLinks(msg.content)}
                 </p>
 
