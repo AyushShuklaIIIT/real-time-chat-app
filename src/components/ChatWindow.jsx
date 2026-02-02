@@ -48,7 +48,7 @@ const ChatWindow = ({ selectedChat, onBack }) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 5 * 1024 * 1024) { 
         alert("File size too large (Max 5MB)");
         return;
     }
@@ -65,14 +65,13 @@ const ChatWindow = ({ selectedChat, onBack }) => {
         body: formData,
       });
       const data = await res.json();
-      
       sendMessage(data.secure_url, 'image');
     } catch (err) {
       console.error("Upload failed", err);
       alert("Failed to upload image");
     } finally {
       setIsUploading(false);
-      e.target.value = null;
+      e.target.value = null; 
     }
   };
 
@@ -106,26 +105,28 @@ const ChatWindow = ({ selectedChat, onBack }) => {
 
   useEffect(() => {
     if (!socket || !selectedChat) return;
+
     const handleReceiveMessage = (newMessage) => {
       const msgSender = getID(newMessage.sender_id);
       const msgReceiver = getID(newMessage.receiver_id);
       const msgRoom = getID(newMessage.room_id);
       const currentChatId = getID(selectedChat._id);
-      const myId = getID(user._id);
 
       const isGroupMatch = selectedChat.type === 'room' && msgRoom === currentChatId;
       const isPrivateMatch = selectedChat.type === 'private' && (msgSender === currentChatId || msgReceiver === currentChatId);
-      const isSelf = msgSender === myId;
 
-      if ((isGroupMatch || isPrivateMatch) && !isSelf) {
+      if (isGroupMatch || isPrivateMatch) {
         setMessages((prev) => [...prev, newMessage]);
       }
     };
+
     const handleUserTyping = ({ username, isTyping, chatId }) => {
         if (getID(chatId) === getID(selectedChat._id)) setTyping(isTyping ? `${username} is typing...` : '');
     };
+
     socket.on('receive_message', handleReceiveMessage);
     socket.on('user_typing', handleUserTyping);
+
     return () => {
       socket.off('receive_message', handleReceiveMessage);
       socket.off('user_typing', handleUserTyping);
@@ -142,20 +143,19 @@ const ChatWindow = ({ selectedChat, onBack }) => {
 
     const messageData = {
       content: content,
-      type: type,
+      type: type, 
       sender_id: user, 
       room_id: selectedChat._id, 
-      typeContext: selectedChat.type,
+      typeContext: selectedChat.type, 
       timestamp: new Date().toISOString()
     };
 
-    setMessages((prev) => [...prev, messageData]);
     
     socket.emit('send_message', { 
         ...messageData, 
         sender_id: user._id,
         type: selectedChat.type,
-        messageType: type
+        messageType: type 
     });
     
     setInput('');
@@ -223,14 +223,13 @@ const ChatWindow = ({ selectedChat, onBack }) => {
               {isOwn && (
                 <button 
                     onClick={() => handleDeleteMessage(msg._id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-slate-500 hover:text-red-400 self-center"
+                    className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity p-2 text-slate-500 hover:text-red-400 self-center"
                     title="Delete Message"
                 >
                     <Trash2 size={16} />
                 </button>
               )}
 
-              {/* Message Bubble */}
               <div className={`relative max-w-[85%] lg:max-w-[70%] px-4 py-2.5 rounded-2xl shadow-sm ${
                 isOwn ? 'bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-br-sm' 
                       : 'bg-slate-800 border border-slate-700/50 text-slate-200 rounded-bl-sm'
@@ -274,22 +273,13 @@ const ChatWindow = ({ selectedChat, onBack }) => {
       {/* Input */}
       <div className="p-4 border-t border-slate-700/50 glass-effect bg-[#0f172a]">
         <form onSubmit={handleSend} className="flex gap-2 items-end">
-          {/* Hidden File Input */}
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileUpload} 
-            className="hidden" 
-            accept="image/*"
-          />
+          <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
           
-          {/* Image Upload Button */}
           <button 
             type="button" 
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
             className="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-400 hover:text-white transition-colors"
-            title="Send Image"
           >
             <ImageIcon size={20} />
           </button>
