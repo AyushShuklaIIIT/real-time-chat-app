@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Send, ArrowLeft, MoreVertical, Phone, Video, Trash2 } from 'lucide-react';
+import { Send, ArrowLeft, MoreVertical, Phone, Video, Trash2, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { chatAPI } from '../services/api';
@@ -10,8 +10,13 @@ const ChatWindow = ({ selectedChat, onBack }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const CLOUD_NAME = import.meta.env.VITE_CLOUD_NAME; 
+  const UPLOAD_PRESET = import.meta.env.VITE_UPLOAD_PRESET; 
 
   const formatMessageTime = (msg) => {
     const dateStr = msg.createdAt || msg.timestamp;
@@ -25,7 +30,6 @@ const ChatWindow = ({ selectedChat, onBack }) => {
 
   const handleDeleteMessage = async (messageId) => {
     if(!globalThis.confirm('Delete this message?')) return;
-
     try {
       await chatAPI.deleteMessage(messageId);
       setMessages((prev) => prev.filter((m) => m._id !== messageId));
@@ -40,28 +44,47 @@ const ChatWindow = ({ selectedChat, onBack }) => {
     return String(id);
   };
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+        alert("File size too large (Max 5MB)");
+        return;
+    }
+
+    setIsUploading(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", UPLOAD_PRESET);
+
+    try {
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      
+      sendMessage(data.secure_url, 'image');
+    } catch (err) {
+      console.error("Upload failed", err);
+      alert("Failed to upload image");
+    } finally {
+      setIsUploading(false);
+      e.target.value = null;
+    }
+  };
+
   const renderContentWithLinks = (text) => {
     if (!text) return null;
-
     const urlRegex = /((?:https?:\/\/)?(?:www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/g;
-    
     const parts = text.split(urlRegex);
-
     return parts.map((part, index) => {
       if (part.match(urlRegex)) {
         const href = part.startsWith('http') ? part : `https://${part}`;
-        
         return (
-          <a
-            key={index}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-400 underline font-medium hover:text-blue-300 break-all"
-            onClick={(e) => e.stopPropagation()} 
-          >
-            {part}
-          </a>
+          <a key={index} href={href} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline font-medium hover:text-blue-300 break-all" onClick={(e) => e.stopPropagation()}>{part}</a>
         );
       }
       return part;
@@ -111,22 +134,37 @@ const ChatWindow = ({ selectedChat, onBack }) => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, typing]);
+  }, [messages, typing, isUploading]);
+
+  const sendMessage = (content, type = 'text') => {
+    if (!content.trim() && type === 'text') return;
+    if (!socket) return;
+
+    const messageData = {
+      content: content,
+      type: type,
+      sender_id: user, 
+      room_id: selectedChat._id, 
+      typeContext: selectedChat.type,
+      timestamp: new Date().toISOString()
+    };
+
+    setMessages((prev) => [...prev, messageData]);
+    
+    socket.emit('send_message', { 
+        ...messageData, 
+        sender_id: user._id,
+        type: selectedChat.type,
+        messageType: type
+    });
+    
+    setInput('');
+    socket.emit('typing', { chatId: selectedChat._id, isTyping: false });
+  };
 
   const handleSend = (e) => {
     e.preventDefault();
-    if (!input.trim() || !socket) return;
-    const messageData = {
-      content: input,
-      sender_id: user, 
-      room_id: selectedChat._id, 
-      type: selectedChat.type,
-      timestamp: new Date().toISOString()
-    };
-    setMessages((prev) => [...prev, messageData]);
-    socket.emit('send_message', { ...messageData, sender_id: user._id });
-    setInput('');
-    socket.emit('typing', { chatId: selectedChat._id, isTyping: false });
+    sendMessage(input, 'text');
   };
 
   const handleTyping = (e) => {
@@ -172,6 +210,8 @@ const ChatWindow = ({ selectedChat, onBack }) => {
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin bg-slate-900/50">
         {messages.map((msg, idx) => {
           const isOwn = getID(msg.sender_id) === getID(user._id);
+          const isImage = msg.type === 'image' || msg.messageType === 'image';
+
           return (
             <div key={idx} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} message-enter group`}>
                {!isOwn && (
@@ -190,7 +230,7 @@ const ChatWindow = ({ selectedChat, onBack }) => {
                 </button>
               )}
 
-              {/* Message Bubble Container */}
+              {/* Message Bubble */}
               <div className={`relative max-w-[85%] lg:max-w-[70%] px-4 py-2.5 rounded-2xl shadow-sm ${
                 isOwn ? 'bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-br-sm' 
                       : 'bg-slate-800 border border-slate-700/50 text-slate-200 rounded-bl-sm'
@@ -199,9 +239,20 @@ const ChatWindow = ({ selectedChat, onBack }) => {
                     <p className="text-xs text-indigo-400 mb-1 font-medium">{msg.sender_id?.username}</p>
                 )}
                 
-                <p className="text-sm leading-relaxed whitespace-pre-wrap break-all">
-                    {renderContentWithLinks(msg.content)}
-                </p>
+                {isImage ? (
+                    <div className="mb-1">
+                        <img 
+                            src={msg.content} 
+                            alt="Shared" 
+                            className="rounded-lg max-h-60 w-auto object-cover border border-white/10"
+                            loading="lazy"
+                        />
+                    </div>
+                ) : (
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-all">
+                        {renderContentWithLinks(msg.content)}
+                    </p>
+                )}
 
                 <p className={`text-[10px] mt-1 text-right ${isOwn ? 'text-indigo-200' : 'text-slate-500'}`}>
                     {formatMessageTime(msg)}
@@ -210,12 +261,39 @@ const ChatWindow = ({ selectedChat, onBack }) => {
             </div>
           );
         })}
+        {isUploading && (
+            <div className="flex justify-end pr-4">
+                 <div className="bg-slate-800 rounded-xl px-4 py-2 flex items-center gap-2 text-xs text-slate-400">
+                    <Loader2 className="animate-spin" size={14} /> Uploading image...
+                 </div>
+            </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
       <div className="p-4 border-t border-slate-700/50 glass-effect bg-[#0f172a]">
         <form onSubmit={handleSend} className="flex gap-2 items-end">
+          {/* Hidden File Input */}
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            className="hidden" 
+            accept="image/*"
+          />
+          
+          {/* Image Upload Button */}
+          <button 
+            type="button" 
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-400 hover:text-white transition-colors"
+            title="Send Image"
+          >
+            <ImageIcon size={20} />
+          </button>
+
           <input
             type="text"
             value={input}
