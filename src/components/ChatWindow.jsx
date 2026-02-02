@@ -3,6 +3,7 @@ import { Send, ArrowLeft, MoreVertical, Phone, Video, Trash2, Image as ImageIcon
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { chatAPI } from '../services/api';
+import MessageStatus from './MessageStatus';
 
 const ChatWindow = ({ selectedChat, onBack }) => {
   const { user } = useAuth();
@@ -102,6 +103,34 @@ const ChatWindow = ({ selectedChat, onBack }) => {
     setTyping('');
     loadHistory();
   }, [selectedChat, socket]);
+
+  useEffect(() => {
+    if(!socket || !selectedChat) return;
+
+    const markRead = () => {
+      if(selectedChat.type === 'private') {
+        socket.emit('mark_as_read', {
+          roomId: selectedChat._id,
+          userId: user._id
+        });
+      }
+    };
+
+    markRead();
+
+    const handleReadUpdate = ({ roomId }) => {
+      if(getID(roomId) === getID(selectedChat._id)) {
+        setMessages(prev => prev.map(msg => ({ ...msg, is_read: true })));
+      }
+    };
+
+    socket.on('messages_read_update', handleReadUpdate);
+  
+    return () => {
+      socket.off('messages_read_update', handleReadUpdate);
+    }
+  }, [socket, selectedChat, messages.length, user._id]);
+  
 
   useEffect(() => {
     if (!socket || !selectedChat) return;
@@ -253,8 +282,9 @@ const ChatWindow = ({ selectedChat, onBack }) => {
                     </p>
                 )}
 
-                <p className={`text-[10px] mt-1 text-right ${isOwn ? 'text-indigo-200' : 'text-slate-500'}`}>
+                <p className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 ${isOwn ? 'text-indigo-200' : 'text-slate-500'}`}>
                     {formatMessageTime(msg)}
+                    <MessageStatus isOwn={isOwn} isRead={msg.is_read} />
                 </p>
               </div>
             </div>
